@@ -1,18 +1,24 @@
 {
-	"name": "mulroy-dev",
-	"version": "0.0.0",
-	"private": true,
-	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest",
-		"cf-typegen": "wrangler types"
-	},
-	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"typescript": "^5.5.2",
-		"vitest": "~3.2.0",
-		"wrangler": "^4.51.0"
-	}
+  "name": "mulroy-dev",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build:registry": "cd apps/registry && shadcn build -o public/r && cp registry.json public/index.json",
+    "deploy": "npm run build:registry && wrangler deploy -c apps/registry/wrangler.jsonc && wrangler deploy -c apps/main/wrangler.jsonc",
+    "deploy:main": "wrangler deploy -c apps/main/wrangler.jsonc",
+    "deploy:registry": "npm run build:registry && wrangler deploy -c apps/registry/wrangler.jsonc",
+    "dev": "wrangler dev -c apps/main/wrangler.jsonc -c apps/registry/wrangler.jsonc",
+    "start": "wrangler dev -c apps/main/wrangler.jsonc -c apps/registry/wrangler.jsonc",
+    "cf-typegen": "wrangler types",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "shadcn": "^2.5.0",
+    "typescript": "^5.5.2",
+    "vitest": "^2.1.0",
+    "wrangler": "^4.51.0"
+  }
 }

@@ -1,0 +1,25 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "mulroy-dev",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-11-27",
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{
+			"custom_domain": true,
+			"pattern": "mulroy.dev"
+		},
+		{
+			"custom_domain": true,
+			"pattern": "registry.mulroy.dev"
+		}
+	],
+	"services": [
+		{
+			"binding": "REGISTRY",
+			"service": "mulroy-dev-registry"
+		}
+	]
+}
