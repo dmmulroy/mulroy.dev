@@ -110,7 +110,7 @@ app.get('/source/:name', async (c) => {
 		theme: 'vercel',
 	});
 
-	const page = <SourcePage item={item} highlightedCode={highlighted} />;
+	const page = <SourcePage item={item} highlightedCode={highlighted} rawSource={source} />;
 
 	return c.html(page.toString());
 });

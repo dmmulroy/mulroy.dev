@@ -171,9 +171,10 @@ function Layout({ title, description, children, registry }: LayoutProps) {
 interface SourcePageProps {
   item: RegistryItem;
   highlightedCode: string;
+  rawSource: string;
 }
 
-function SourcePage({ item, highlightedCode }: SourcePageProps) {
+function SourcePage({ item, highlightedCode, rawSource }: SourcePageProps) {
   return (
     <html lang="en" className="dark">
       <head>
@@ -264,13 +265,18 @@ function SourcePage({ item, highlightedCode }: SourcePageProps) {
               <div dangerouslySetInnerHTML={{ __html: highlightedCode }} />
             </div>
           </div>
+          <script
+            id="raw-source"
+            type="application/json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(rawSource) }}
+          />
         </div>
 
         <script>
-          {`const sourceCode = document.querySelector('.shiki code')?.textContent || '';
-					const copyBtn = document.getElementById('copy-source-btn');
+          {`const copyBtn = document.getElementById('copy-source-btn');
 
 					copyBtn?.addEventListener('click', async () => {
+						const sourceCode = JSON.parse(document.getElementById('raw-source')?.textContent || '""');
 						await navigator.clipboard.writeText(sourceCode);
 
 						const copyIcon = copyBtn.querySelector('.copy-icon');
