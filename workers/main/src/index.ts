@@ -7,7 +7,7 @@ export default {
 		const url = new URL(request.url);
 		const host = url.hostname;
 
-		// registry.mulroy.dev → proxy to registry worker
+		// registry.mulroy.dev → proxy to registry worker via service binding
 		if (host === 'registry.mulroy.dev' || host.startsWith('registry.')) {
 			return env.REGISTRY.fetch(request);
 		}
