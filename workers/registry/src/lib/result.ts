@@ -346,28 +346,28 @@ function all<T, E>(results: Result<T, E>[]): Result<T[], E> {
 }
 
 /**
- * Convert array of Results to Result of array. Collects all errors.
+ * Partition array of Results into [oks, errs].
  *
  * @param results - Array of Results
- * @returns Ok with array of values or Err with array of all errors
+ * @returns Tuple of [ok values, error values]
  *
  * @example
  * ```typescript
- * const results = [Result.ok(1), Result.err("a"), Result.err("b")];
- * const combined = Result.partition(results); // Err(["a", "b"])
+ * const results = [Result.ok(1), Result.err("a"), Result.ok(2), Result.err("b")];
+ * const [oks, errs] = Result.partition(results); // [[1, 2], ["a", "b"]]
  * ```
  */
-function partition<T, E>(results: Result<T, E>[]): Result<T[], E[]> {
-  const values: T[] = [];
-  const errors: E[] = [];
+function partition<T, E>(results: Result<T, E>[]): [T[], E[]] {
+  const oks: T[] = [];
+  const errs: E[] = [];
   for (const result of results) {
     if (result.isErr()) {
-      errors.push(result.error);
+      errs.push(result.error);
     } else {
-      values.push(result.value);
+      oks.push(result.value);
     }
   }
-  return errors.length > 0 ? err(errors) : ok(values);
+  return [oks, errs];
 }
 
 /**
