@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "pnpm build:registry",
     "build:registry": "pnpm --filter @mulroy-dev/registry build",
     "deploy": "pnpm build:registry && pnpm --filter @mulroy-dev/registry run deploy && pnpm --filter @mulroy-dev/main run deploy",
     "deploy:main": "pnpm --filter @mulroy-dev/main run deploy",
