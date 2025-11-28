@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "shadcn build -o public/r && cp registry.json public/index.json",
+    "build": "shadcn build -o public/r",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run",
