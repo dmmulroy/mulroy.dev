@@ -8,10 +8,6 @@ import registryData from '../registry.json';
 import vercelTheme from './vercel-theme';
 import { ItemCard, Layout, SourcePage } from './components';
 
-interface Env {
-	ASSETS: Fetcher;
-}
-
 interface Registry {
 	$schema: string;
 	name: string;
@@ -78,7 +74,7 @@ app.get('/', (c) => {
 		</Layout>
 	);
 
-	return c.html(page.toString());
+	return c.html(page);
 });
 
 // Source page
@@ -90,12 +86,7 @@ app.get('/source/:name', async (c) => {
 		return c.notFound();
 	}
 
-	const assets = c.env?.ASSETS as Fetcher | undefined;
-	if (!assets) {
-		return c.notFound();
-	}
-
-	const response = await assets.fetch(`https://assets.local/r/${name}.json`);
+	const response = await c.env.ASSETS.fetch(`https://assets.local/r/${name}.json`);
 
 	if (!response.ok) {
 		return c.notFound();
@@ -112,19 +103,10 @@ app.get('/source/:name', async (c) => {
 
 	const page = <SourcePage item={item} highlightedCode={highlighted} rawSource={source} />;
 
-	return c.html(page.toString());
+	return c.html(page);
 });
 
 // Fallback for unmatched routes - serve static assets or 404
-app.all('*', async (c) => {
-	const assets = c.env?.ASSETS as Fetcher | undefined;
-	if (assets) {
-		const res = await assets.fetch(c.req.raw);
-		if (res.status !== 404) {
-			return res;
-		}
-	}
-	return c.notFound();
-});
+app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
 
 export default app;
