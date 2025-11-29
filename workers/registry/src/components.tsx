@@ -272,25 +272,27 @@ function SourcePage({ item, highlightedCode, rawSource }: SourcePageProps) {
           />
         </div>
 
-        <script>
-          {`const copyBtn = document.getElementById('copy-source-btn');
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `const copyBtn = document.getElementById('copy-source-btn');
 
-					copyBtn?.addEventListener('click', async () => {
-						const sourceCode = JSON.parse(document.getElementById('raw-source')?.textContent || '""');
-						await navigator.clipboard.writeText(sourceCode);
+copyBtn?.addEventListener('click', async () => {
+  const sourceCode = JSON.parse(document.getElementById('raw-source')?.textContent || '""');
+  await navigator.clipboard.writeText(sourceCode);
 
-						const copyIcon = copyBtn.querySelector('.copy-icon');
-						const checkIcon = copyBtn.querySelector('.check-icon');
+  const copyIcon = copyBtn.querySelector('.copy-icon');
+  const checkIcon = copyBtn.querySelector('.check-icon');
 
-						copyIcon?.classList.add('hidden');
-						checkIcon?.classList.remove('hidden');
+  copyIcon?.classList.add('hidden');
+  checkIcon?.classList.remove('hidden');
 
-						setTimeout(() => {
-							copyIcon?.classList.remove('hidden');
-							checkIcon?.classList.add('hidden');
-						}, 2000);
-					});`}
-        </script>
+  setTimeout(() => {
+    copyIcon?.classList.remove('hidden');
+    checkIcon?.classList.add('hidden');
+  }, 2000);
+});`,
+          }}
+        />
       </body>
     </html>
   );
