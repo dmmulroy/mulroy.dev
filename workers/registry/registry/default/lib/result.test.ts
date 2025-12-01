@@ -118,22 +118,27 @@ describe("tryCatch", () => {
     expect(result.isOk() && result.value).toBe(42);
   });
 
-  it("returns Err on throw", () => {
-    const result = Result.tryCatch(
-      () => {
+  it("returns Err on throw with object form", () => {
+    const result = Result.tryCatch({
+      try: () => {
         throw new Error("oops");
       },
-      (e) => (e as Error).message,
-    );
+      catch: (e) => (e as Error).message,
+    });
     expect(result.isErr() && result.error).toBe("oops");
   });
 
-  it("uses default error handler", () => {
-    const error = new Error("oops");
+  it("uses default error handler wrapping in Error", () => {
+    const original = new Error("oops");
     const result = Result.tryCatch(() => {
-      throw error;
+      throw original;
     });
-    expect(result.isErr() && result.error).toBe(error);
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error.message).toBe("Unexpected exception");
+      expect(result.error.cause).toBe(original);
+    }
   });
 });
 
@@ -143,14 +148,27 @@ describe("tryCatchAsync", () => {
     expect(result.isOk() && result.value).toBe(42);
   });
 
-  it("returns Err on rejection", async () => {
-    const result = await Result.tryCatchAsync(
-      async () => {
+  it("returns Err on rejection with object form", async () => {
+    const result = await Result.tryCatchAsync({
+      try: async () => {
         throw new Error("oops");
       },
-      (e) => (e as Error).message,
-    );
+      catch: (e) => (e as Error).message,
+    });
     expect(result.isErr() && result.error).toBe("oops");
+  });
+
+  it("uses default error handler wrapping in Error", async () => {
+    const original = new Error("oops");
+    const result = await Result.tryCatchAsync(async () => {
+      throw original;
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error.message).toBe("Unexpected exception");
+      expect(result.error.cause).toBe(original);
+    }
   });
 });
 

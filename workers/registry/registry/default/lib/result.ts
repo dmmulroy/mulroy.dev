@@ -1,40 +1,27 @@
 /**
- * Result type for typed error handling without exceptions.
+ * A discriminated union representing either success (Ok) or failure (Err).
  *
- * @example
- * ```typescript
- * const result = Result.ok(42)
- *   .map(x => x * 2)
- *   .andThen(x => x > 50 ? Result.ok(x) : Result.err("too small"));
- *
- * if (result.isOk()) {
- *   console.log(result.value);
- * } else {
- *   console.log(result.error);
- * }
- * ```
+ * @template A - The success value type
+ * @template E - The error value type
  */
+export type Result<A, E> = Ok<A, E> | Err<E>;
 
-export type Result<T, E> = Ok<T, E> | Err<T, E>;
-
-// SAFETY: Ok only stores `value: T`. The `E` type parameter is phantom (unused at runtime).
-// Casting Ok<T, E> to Ok<T, F> is safe because E has no runtime representation.
 /**
  * Success variant of Result.
  *
- * @template T - The success value type
+ * @template A - The success value type
  * @template E - The error type (phantom, unused at runtime)
  */
-export class Ok<T, E> {
+export class Ok<A, E = never> {
   readonly _tag = "Ok" as const;
-  constructor(readonly value: T) {}
+  constructor(readonly value: A) {}
 
   /**
    * Type guard for Ok variant.
    *
    * @returns true
    */
-  isOk(): this is Ok<T, E> {
+  isOk(): this is Ok<A> {
     return true;
   }
 
@@ -43,7 +30,7 @@ export class Ok<T, E> {
    *
    * @returns false
    */
-  isErr(): this is Err<T, E> {
+  isErr(): this is Err<E> {
     return false;
   }
 
@@ -53,7 +40,7 @@ export class Ok<T, E> {
    * @param fn - Transform function
    * @returns New Result with transformed value
    */
-  map<U>(fn: (value: T) => U): Result<U, E> {
+  map<U>(fn: (value: A) => U): Result<U, E> {
     return new Ok(fn(this.value));
   }
 
@@ -63,9 +50,9 @@ export class Ok<T, E> {
    * @param _fn - Transform function (not called)
    * @returns This Ok with new error type
    */
-  mapErr<F>(_fn: (error: E) => F): Result<T, F> {
-    // SAFETY: E is phantom in Ok; see class comment
-    return this as unknown as Ok<T, F>;
+  mapErr<F>(_fn: (error: E) => F): Result<A, F> {
+    // SAFETY: E is phantom in Ok;
+    return this as unknown as Ok<A, F>;
   }
 
   /**
@@ -74,7 +61,7 @@ export class Ok<T, E> {
    * @param fn - Function returning a new Result
    * @returns Result from fn
    */
-  andThen<U, F>(fn: (value: T) => Result<U, F>): Result<U, E | F> {
+  andThen<U, F>(fn: (value: A) => Result<U, F>): Result<U, E | F> {
     return fn(this.value);
   }
 
@@ -84,9 +71,9 @@ export class Ok<T, E> {
    * @param _fn - Recovery function (not called)
    * @returns This Ok with new error type
    */
-  orElse<F>(_fn: (error: E) => Result<T, F>): Result<T, F> {
-    // SAFETY: E is phantom in Ok; see class comment
-    return this as unknown as Ok<T, F>;
+  orElse<F>(_fn: (error: E) => Result<A, F>): Result<A, F> {
+    // SAFETY: E is phantom in Ok;
+    return this as unknown as Ok<A, F>;
   }
 
   /**
@@ -94,7 +81,7 @@ export class Ok<T, E> {
    *
    * @returns The success value
    */
-  unwrap(): T {
+  unwrap(): A {
     return this.value;
   }
 
@@ -104,7 +91,7 @@ export class Ok<T, E> {
    * @param _defaultValue - Default value (not used)
    * @returns The success value
    */
-  unwrapOr(_defaultValue: T): T {
+  unwrapOr(_defaultValue: A): A {
     return this.value;
   }
 
@@ -123,7 +110,7 @@ export class Ok<T, E> {
    * @param handlers - Object with ok and err handlers
    * @returns Result of ok handler
    */
-  match<U>(handlers: { ok: (value: T) => U; err: (error: E) => U }): U {
+  match<U>(handlers: { ok: (value: A) => U; err: (error: E) => U }): U {
     return handlers.ok(this.value);
   }
 }
@@ -133,10 +120,10 @@ export class Ok<T, E> {
 /**
  * Failure variant of Result.
  *
- * @template T - The success type (phantom, unused at runtime)
+ * @template A - The success type (phantom, unused at runtime)
  * @template E - The error value type
  */
-export class Err<T, E> {
+export class Err<E, A = never> {
   readonly _tag = "Err" as const;
   constructor(readonly error: E) {}
 
@@ -145,7 +132,7 @@ export class Err<T, E> {
    *
    * @returns false
    */
-  isOk(): this is Ok<T, E> {
+  isOk(): this is Ok<A> {
     return false;
   }
 
@@ -154,7 +141,7 @@ export class Err<T, E> {
    *
    * @returns true
    */
-  isErr(): this is Err<T, E> {
+  isErr(): this is Err<E> {
     return true;
   }
 
@@ -164,9 +151,9 @@ export class Err<T, E> {
    * @param _fn - Transform function (not called)
    * @returns This Err with new success type
    */
-  map<U>(_fn: (value: T) => U): Result<U, E> {
-    // SAFETY: T is phantom in Err; see class comment
-    return this as unknown as Err<U, E>;
+  map<U>(_fn: (value: A) => U): Result<U, E> {
+    // SAFETY: A is phantom in Err;
+    return this as unknown as Err<E>;
   }
 
   /**
@@ -175,7 +162,7 @@ export class Err<T, E> {
    * @param fn - Transform function
    * @returns New Err with transformed error
    */
-  mapErr<F>(fn: (error: E) => F): Result<T, F> {
+  mapErr<F>(fn: (error: E) => F): Result<A, F> {
     return new Err(fn(this.error));
   }
 
@@ -185,9 +172,9 @@ export class Err<T, E> {
    * @param _fn - Function returning a new Result (not called)
    * @returns This Err with union error type
    */
-  andThen<U, F>(_fn: (value: T) => Result<U, F>): Result<U, E | F> {
-    // SAFETY: T is phantom in Err; see class comment
-    return this as unknown as Err<U, E>;
+  andThen<U, F>(_fn: (value: A) => Result<U, F>): Result<U, E | F> {
+    // SAFETY: A is phantom in Err;
+    return this as unknown as Err<E>;
   }
 
   /**
@@ -196,7 +183,7 @@ export class Err<T, E> {
    * @param fn - Recovery function
    * @returns Result from fn
    */
-  orElse<F>(fn: (error: E) => Result<T, F>): Result<T, F> {
+  orElse<F>(fn: (error: E) => Result<A, F>): Result<A, F> {
     return fn(this.error);
   }
 
@@ -205,7 +192,7 @@ export class Err<T, E> {
    *
    * @throws Error always (Err has no success value)
    */
-  unwrap(): T {
+  unwrap(): A {
     throw new Error("Called unwrap on Err");
   }
 
@@ -215,7 +202,7 @@ export class Err<T, E> {
    * @param defaultValue - Default value to return
    * @returns The default value
    */
-  unwrapOr(defaultValue: T): T {
+  unwrapOr(defaultValue: A): A {
     return defaultValue;
   }
 
@@ -234,7 +221,7 @@ export class Err<T, E> {
    * @param handlers - Object with ok and err handlers
    * @returns Result of err handler
    */
-  match<U>(handlers: { ok: (value: T) => U; err: (error: E) => U }): U {
+  match<U>(handlers: { ok: (value: A) => U; err: (error: E) => U }): U {
     return handlers.err(this.error);
   }
 }
@@ -272,52 +259,93 @@ function err<E, T = never>(error: E): Result<T, E> {
 /**
  * Wrap a throwing function in a Result.
  *
- * @param fn - Function that may throw
- * @param onError - Transform caught value to error type
+ * @param args - Object with try/catch handlers, or just a try function
  * @returns Ok with return value or Err with transformed error
  *
  * @example
  * ```typescript
- * const result = Result.tryCatch(
- *   () => JSON.parse(input),
- *   (e) => new ParseError({ cause: e })
- * );
+ * // With custom error handler
+ * const result = Result.tryCatch({
+ *   try: () => JSON.parse(input),
+ *   catch: (e) => new ParseError({ cause: e })
+ * });
+ *
+ * // Without handler (wraps in Error)
+ * const result = Result.tryCatch(() => JSON.parse(input));
  * ```
  */
+function tryCatch<T, E = Error>(handlers: {
+  try: () => T;
+  catch: (cause: unknown) => E;
+}): Result<T, E>;
+function tryCatch<T, E = Error>(fn: () => T): Result<T, E>;
 function tryCatch<T, E = Error>(
-  fn: () => T,
-  onError: (e: unknown) => E = (e) => e as E,
+  args: { try: () => T; catch: (cause: unknown) => E } | (() => T),
 ): Result<T, E> {
+  if (typeof args === "object" && "try" in args) {
+    try {
+      return Result.ok(args.try());
+    } catch (cause) {
+      return Result.err(args.catch(cause));
+    }
+  }
+
   try {
-    return ok(fn());
-  } catch (e) {
-    return err(onError(e));
+    return Result.ok(args());
+  } catch (cause) {
+    // SAFETY: The caller did not pass a catch handler so E defaults to type of Error
+    return Result.err(new Error("Unexpected exception", { cause })) as Result<
+      T,
+      E
+    >;
   }
 }
-
 /**
  * Wrap an async throwing function in a Result.
  *
- * @param fn - Async function that may throw
- * @param onError - Transform caught value to error type
+ * @param args - Object with try/catch handlers, or just a try function
  * @returns Promise of Ok with return value or Err with transformed error
  *
  * @example
  * ```typescript
- * const result = await Result.tryCatchAsync(
- *   () => fetch(url).then(r => r.json()),
- *   (e) => new FetchError({ cause: e })
- * );
+ * // With custom error handler
+ * const result = await Result.tryCatchAsync({
+ *   try: () => fetch(url).then(r => r.json()),
+ *   catch: (e) => new FetchError({ cause: e })
+ * });
+ *
+ * // Without handler (wraps in Error)
+ * const result = await Result.tryCatchAsync(() => fetch(url));
  * ```
  */
-async function tryCatchAsync<T, E = Error>(
+function tryCatchAsync<T, E>(handlers: {
+  try: () => Promise<T>;
+  catch: (cause: unknown) => E;
+}): Promise<Result<T, E>>;
+function tryCatchAsync<T, E = Error>(
   fn: () => Promise<T>,
-  onError: (e: unknown) => E = (e) => e as E,
+): Promise<Result<T, E>>;
+async function tryCatchAsync<T, E = Error>(
+  args:
+    | { try: () => Promise<T>; catch: (cause: unknown) => E }
+    | (() => Promise<T>),
 ): Promise<Result<T, E>> {
+  if (typeof args === "object" && "try" in args) {
+    try {
+      return Result.ok(await args.try());
+    } catch (cause) {
+      return Result.err(args.catch(cause));
+    }
+  }
+
   try {
-    return ok(await fn());
-  } catch (e) {
-    return err(onError(e));
+    return Result.ok(await args());
+  } catch (cause) {
+    // SAFETY: The caller did not pass a catch handler so E defaults to type of Error
+    return Result.err(new Error("Unexpected exception", { cause })) as Result<
+      T,
+      E
+    >;
   }
 }
 
@@ -337,8 +365,7 @@ function all<T, E>(results: Result<T, E>[]): Result<T[], E> {
   const values: T[] = [];
   for (const result of results) {
     if (result.isErr()) {
-      // SAFETY: T is phantom in Err; Err<T, E> and Err<T[], E> are identical at runtime
-      return result as unknown as Err<T[], E>;
+      return result;
     }
     values.push(result.value);
   }
@@ -346,28 +373,28 @@ function all<T, E>(results: Result<T, E>[]): Result<T[], E> {
 }
 
 /**
- * Partition array of Results into [oks, errs].
+ * Convert array of Results to Result of array. Collects all errors.
  *
  * @param results - Array of Results
- * @returns Tuple of [ok values, error values]
+ * @returns Ok with array of values or Err with array of all errors
  *
  * @example
  * ```typescript
- * const results = [Result.ok(1), Result.err("a"), Result.ok(2), Result.err("b")];
- * const [oks, errs] = Result.partition(results); // [[1, 2], ["a", "b"]]
+ * const results = [Result.ok(1), Result.err("a"), Result.err("b")];
+ * const combined = Result.partition(results); // Err(["a", "b"])
  * ```
  */
-function partition<T, E>(results: Result<T, E>[]): [T[], E[]] {
-  const oks: T[] = [];
-  const errs: E[] = [];
+function partition<T, E>(results: Result<T, E>[]): Result<T[], E[]> {
+  const values: T[] = [];
+  const errors: E[] = [];
   for (const result of results) {
     if (result.isErr()) {
-      errs.push(result.error);
+      errors.push(result.error);
     } else {
-      oks.push(result.value);
+      values.push(result.value);
     }
   }
-  return [oks, errs];
+  return errors.length > 0 ? err(errors) : ok(values);
 }
 
 /**
