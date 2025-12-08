@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Result } from "./result";
+import { AsyncResult, Result } from "./result";
 
 describe("Ok", () => {
   it("isOk returns true", () => {
@@ -112,25 +112,25 @@ describe("Err", () => {
   });
 });
 
-describe("tryCatch", () => {
+describe("try", () => {
   it("returns Ok on success", () => {
-    const result = Result.tryCatch(() => 42);
+    const result = Result.try(() => 42);
     expect(result.isOk() && result.value).toBe(42);
   });
 
   it("returns Err on throw with object form", () => {
-    const result = Result.tryCatch({
+    const result = Result.try({
       try: () => {
         throw new Error("oops");
       },
-      catch: (e) => (e as Error).message,
+      catch: (e: unknown) => (e as Error).message,
     });
     expect(result.isErr() && result.error).toBe("oops");
   });
 
   it("uses default error handler wrapping in Error", () => {
     const original = new Error("oops");
-    const result = Result.tryCatch(() => {
+    const result = Result.try(() => {
       throw original;
     });
     expect(result.isErr()).toBe(true);
@@ -142,25 +142,25 @@ describe("tryCatch", () => {
   });
 });
 
-describe("tryCatchAsync", () => {
+describe("tryPromise", () => {
   it("returns Ok on success", async () => {
-    const result = await Result.tryCatchAsync(async () => 42);
+    const result = await Result.tryPromise(async () => 42);
     expect(result.isOk() && result.value).toBe(42);
   });
 
   it("returns Err on rejection with object form", async () => {
-    const result = await Result.tryCatchAsync({
+    const result = await Result.tryPromise({
       try: async () => {
         throw new Error("oops");
       },
-      catch: (e) => (e as Error).message,
+      catch: (e: unknown) => (e as Error).message,
     });
     expect(result.isErr() && result.error).toBe("oops");
   });
 
   it("uses default error handler wrapping in Error", async () => {
     const original = new Error("oops");
-    const result = await Result.tryCatchAsync(async () => {
+    const result = await Result.tryPromise(async () => {
       throw original;
     });
     expect(result.isErr()).toBe(true);
@@ -244,5 +244,270 @@ describe("firstOk", () => {
 
   it("throws on empty array", () => {
     expect(() => Result.firstOk([])).toThrow("firstOk called with empty array");
+  });
+});
+
+describe("AsyncResult", () => {
+  describe("factory functions", () => {
+    it("okAsync creates success AsyncResult", async () => {
+      const result = await Result.okAsync(42);
+      expect(result.isOk() && result.value).toBe(42);
+    });
+
+    it("errAsync creates failure AsyncResult", async () => {
+      const result = await Result.errAsync("fail");
+      expect(result.isErr() && result.error).toBe("fail");
+    });
+
+    it("tryPromise catches rejections", async () => {
+      const result = await Result.tryPromise({
+        try: () => Promise.reject(new Error("oops")),
+        catch: (e: unknown) => (e as Error).message,
+      });
+      expect(result.isErr() && result.error).toBe("oops");
+    });
+
+    it("tryPromise wraps resolved values", async () => {
+      const result = await Result.tryPromise({
+        try: () => Promise.resolve(42),
+        catch: () => "error",
+      });
+      expect(result.isOk() && result.value).toBe(42);
+    });
+  });
+
+  describe("map", () => {
+    it("transforms success value sync", async () => {
+      const result = await Result.okAsync(2).map((x) => x * 3);
+      expect(result.isOk() && result.value).toBe(6);
+    });
+
+    it("transforms success value async", async () => {
+      const result = await Result.okAsync(2).map(async (x) => x * 3);
+      expect(result.isOk() && result.value).toBe(6);
+    });
+
+    it("skips transform on error", async () => {
+      const result = await Result.errAsync<string, number>("fail").map(
+        (x) => x * 2,
+      );
+      expect(result.isErr() && result.error).toBe("fail");
+    });
+  });
+
+  describe("mapErr", () => {
+    it("transforms error value sync", async () => {
+      const result = await Result.errAsync("fail").mapErr((e) => e.length);
+      expect(result.isErr() && result.error).toBe(4);
+    });
+
+    it("transforms error value async", async () => {
+      const result = await Result.errAsync("fail").mapErr(
+        async (e) => e.length,
+      );
+      expect(result.isErr() && result.error).toBe(4);
+    });
+
+    it("skips transform on success", async () => {
+      const result = await Result.okAsync<number, string>(42).mapErr(
+        (e) => e.length,
+      );
+      expect(result.isOk() && result.value).toBe(42);
+    });
+  });
+
+  describe("andThen", () => {
+    it("chains with sync Result", async () => {
+      const result = await Result.okAsync(2).andThen((x) => Result.ok(x * 3));
+      expect(result.isOk() && result.value).toBe(6);
+    });
+
+    it("chains with AsyncResult", async () => {
+      const result = await Result.okAsync(2).andThen((x) =>
+        Result.okAsync(x * 3),
+      );
+      expect(result.isOk() && result.value).toBe(6);
+    });
+
+    it("propagates error", async () => {
+      const result = await Result.okAsync(2).andThen(() => Result.err("fail"));
+      expect(result.isErr() && result.error).toBe("fail");
+    });
+
+    it("short-circuits on error", async () => {
+      let called = false;
+      const result = await Result.errAsync<string, number>("fail").andThen(
+        (x) => {
+          called = true;
+          return Result.ok(x * 2);
+        },
+      );
+      expect(called).toBe(false);
+      expect(result.isErr() && result.error).toBe("fail");
+    });
+  });
+
+  describe("orElse", () => {
+    it("recovers from error with sync Result", async () => {
+      const result = await Result.errAsync<string, number>("fail").orElse(() =>
+        Result.ok(42),
+      );
+      expect(result.isOk() && result.value).toBe(42);
+    });
+
+    it("recovers from error with AsyncResult", async () => {
+      const result = await Result.errAsync<string, number>("fail").orElse(() =>
+        Result.okAsync(42),
+      );
+      expect(result.isOk() && result.value).toBe(42);
+    });
+
+    it("skips recovery on success", async () => {
+      let called = false;
+      const result = await Result.okAsync<number, string>(42).orElse(() => {
+        called = true;
+        return Result.ok(0);
+      });
+      expect(called).toBe(false);
+      expect(result.isOk() && result.value).toBe(42);
+    });
+  });
+
+  describe("match", () => {
+    it("calls ok handler on success", async () => {
+      const result = await Result.okAsync(5).match({
+        ok: (v) => v * 2,
+        err: () => 0,
+      });
+      expect(result).toBe(10);
+    });
+
+    it("calls err handler on failure", async () => {
+      const result = await Result.errAsync<string, number>("fail").match({
+        ok: () => 0,
+        err: (e) => e.length,
+      });
+      expect(result).toBe(4);
+    });
+
+    it("handles async handlers", async () => {
+      const result = await Result.okAsync(5).match({
+        ok: async (v) => v * 2,
+        err: async () => 0,
+      });
+      expect(result).toBe(10);
+    });
+  });
+
+  describe("unwrapOr", () => {
+    it("returns value on success", async () => {
+      const value = await Result.okAsync(42).unwrapOr(0);
+      expect(value).toBe(42);
+    });
+
+    it("returns default on error", async () => {
+      const value = await Result.errAsync<string, number>("fail").unwrapOr(0);
+      expect(value).toBe(0);
+    });
+  });
+
+  describe("static array methods", () => {
+    it("all returns Ok with all values", async () => {
+      const result = await AsyncResult.all([
+        Result.okAsync(1),
+        Result.okAsync(2),
+        Result.okAsync(3),
+      ]);
+      expect(result.isOk() && result.value).toEqual([1, 2, 3]);
+    });
+
+    it("all returns first error", async () => {
+      const result = await AsyncResult.all([
+        Result.okAsync(1),
+        Result.errAsync("first"),
+        Result.errAsync("second"),
+      ]);
+      expect(result.isErr() && result.error).toBe("first");
+    });
+
+    it("partition returns Ok with all values", async () => {
+      const result = await AsyncResult.partition([
+        Result.okAsync(1),
+        Result.okAsync(2),
+      ]);
+      expect(result.isOk() && result.value).toEqual([1, 2]);
+    });
+
+    it("partition collects all errors", async () => {
+      const result = await AsyncResult.partition([
+        Result.okAsync(1),
+        Result.errAsync("a"),
+        Result.errAsync("b"),
+      ]);
+      expect(result.isErr() && result.error).toEqual(["a", "b"]);
+    });
+
+    it("firstOk returns first success", async () => {
+      const result = await AsyncResult.firstOk([
+        Result.errAsync("a"),
+        Result.okAsync(42),
+        Result.errAsync("b"),
+      ]);
+      expect(result.isOk() && result.value).toBe(42);
+    });
+
+    it("firstOk returns last error when all fail", async () => {
+      const result = await AsyncResult.firstOk([
+        Result.errAsync("a"),
+        Result.errAsync("b"),
+        Result.errAsync("c"),
+      ]);
+      expect(result.isErr() && result.error).toBe("c");
+    });
+  });
+});
+
+describe("sync Result async bridging", () => {
+  it("Ok.map with async fn returns AsyncResult", async () => {
+    const result = await Result.ok(2).map(async (x) => x * 3);
+    expect(result.isOk() && result.value).toBe(6);
+  });
+
+  it("Err.map with async fn returns AsyncResult", async () => {
+    const result = await Result.err<string, number>("fail").map(
+      async (x) => x * 2,
+    );
+    expect(result.isErr() && result.error).toBe("fail");
+  });
+
+  it("Ok.andThen with AsyncResult returns AsyncResult", async () => {
+    const result = await Result.ok(2).andThen((x) => Result.okAsync(x * 3));
+    expect(result.isOk() && result.value).toBe(6);
+  });
+
+  it("Ok.andThen with Promise<Result> returns AsyncResult", async () => {
+    const result = await Result.ok(2).andThen(async (x) => Result.ok(x * 3));
+    expect(result.isOk() && result.value).toBe(6);
+  });
+
+  it("Err.andThen with async fn returns AsyncResult", async () => {
+    const result = await Result.err<string, number>("fail").andThen(async (x) =>
+      Result.ok(x * 2),
+    );
+    expect(result.isErr() && result.error).toBe("fail");
+  });
+
+  it("Err.orElse with AsyncResult returns AsyncResult", async () => {
+    const result = await Result.err<string, number>("fail").orElse(() =>
+      Result.okAsync(42),
+    );
+    expect(result.isOk() && result.value).toBe(42);
+  });
+
+  it("Err.orElse with Promise<Result> returns AsyncResult", async () => {
+    const result = await Result.err<string, number>("fail").orElse(async () =>
+      Result.ok(42),
+    );
+    expect(result.isOk() && result.value).toBe(42);
   });
 });
